@@ -1,5 +1,5 @@
 // src/services/authService.js
-import api from './apiService'; // ✅ Only import it
+import api from './apiService'; // ✅ Correctly imported
 
 // 🔐 Authentication
 export const login = async (credentials) => {
@@ -7,9 +7,8 @@ export const login = async (credentials) => {
 };
 
 export const registerUser = async (userData) => {
-  return axios.post("/api/auth/register", userData);
+  return await api.post("/auth/register", userData); // ✅ use api, not axios
 };
-
 
 // 🔁 Forgot Password Flow
 export const sendOtp = async (email) => {

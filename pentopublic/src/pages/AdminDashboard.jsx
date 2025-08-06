@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, 
   BookOpen, 
@@ -13,9 +13,146 @@ import {
   BarChart3,
   RotateCw,
   AlertCircle,
-  Calendar
+  Calendar,
+  LogOut,
+  User,
+  ChevronDown,
+  Bell,
+  Settings
 } from 'lucide-react';
-import adminService from '../services/adminService';
+
+// Import adminService (this would be your actual service)
+const adminService = {
+  getDashboard: () => fetch('/api/admin/dashboard').then(res => res.json()),
+  getPendingBooks: () => fetch('/api/admin/pending-books').then(res => res.json()),
+  getReaders: () => fetch('/api/admin/readers').then(res => res.json()),
+  getAuthors: () => fetch('/api/admin/authors').then(res => res.json()),
+  getBooksSummary: () => fetch('/api/admin/books-summary').then(res => res.json()),
+  approveBook: (bookId) => fetch(`/api/admin/books/${bookId}/approve`, { method: 'PUT' }).then(res => res.json()),
+  rejectBook: (bookId) => fetch(`/api/admin/books/${bookId}/reject`, { method: 'PUT' }).then(res => res.json())
+};
+
+// These hooks would be imported from your actual context and router
+// import { useAuth } from '@/context/AuthContext';
+// import { useNavigate } from 'react-router-dom';
+
+// For demo purposes, these are placeholder functions that simulate the real behavior
+const useAuth = () => ({
+  user: { userName: "Admin User", role: "administrator" }, // This will be populated by your actual auth context
+  logout: () => console.log("Logout function called")
+});
+
+const useNavigate = () => (path) => {
+  console.log("Navigate to:", path);
+  // In your real app, this would actually navigate to the route
+  return true;
+};
+
+// AdminHeader Component
+const AdminHeader = ({ darkMode, onToggleTheme, onRefresh, refreshing }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const handleProfileClick = () => {
+    navigate("/profile");
+    setDropdownOpen(false);
+  };
+
+  return (
+    <header className="bg-white shadow px-4 py-2 flex items-center justify-between sticky top-0 z-20 border-b">
+      <div className="flex items-center space-x-6">
+        <h1
+          className="text-2xl font-bold cursor-pointer text-blue-600"
+          onClick={() => navigate("/admin-dashboard")}
+        >
+          PenToPublic Admin 🛡️
+        </h1>
+        
+        {/* Header Actions */}
+        <div className="flex items-center space-x-3">
+          {/* Refresh Button */}
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            className={`flex items-center space-x-2 px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200 ${refreshing ? 'opacity-50' : ''}`}
+          >
+            <RotateCw className={`h-4 w-4 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="text-gray-600 text-sm font-medium hidden sm:block">
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </span>
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            onClick={onToggleTheme}
+            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200"
+          >
+            {darkMode ? <Sun className="h-4 w-4 text-yellow-600" /> : <Moon className="h-4 w-4 text-gray-600" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="relative" ref={dropdownRef}>
+        <button
+          className="flex items-center gap-2 border rounded-full px-3 py-2 bg-white hover:bg-gray-100 transition"
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+        >
+          <User size={18} />
+          <span className="font-medium">{user?.userName || 'Admin User'}</span>
+          <ChevronDown size={16} />
+        </button>
+
+        {dropdownOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setDropdownOpen(false)}
+            />
+            <div className="absolute right-0 mt-2 w-64 bg-white border rounded-lg shadow z-50 overflow-hidden">
+              <div className="p-4 border-b">
+                <p className="font-semibold">{user?.userName || 'Admin User'}</p>
+                <p className="text-sm text-gray-500 capitalize">{user?.role || 'Administrator'}</p>
+              </div>
+
+              <button
+                onClick={handleProfileClick}
+                className="w-full text-left px-4 py-3 hover:bg-gray-100 flex items-center gap-2"
+              >
+                <User size={16} className="text-gray-600" />
+                <span>Your Profile</span>
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-3 text-red-500 hover:bg-red-50 flex items-center gap-2"
+              >
+                <LogOut size={16} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </header>
+  );
+};
 
 const AdminDashboard = () => {
   // UI State
@@ -35,15 +172,15 @@ const AdminDashboard = () => {
 
   // Theme
   const theme = {
-    bg: darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50',
-    cardBg: darkMode ? 'bg-gray-800' : 'bg-white/80 backdrop-blur-sm',
+    bg: darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100',
+    cardBg: darkMode ? 'bg-gray-800/90' : 'bg-white/90 backdrop-blur-sm',
     text: darkMode ? 'text-white' : 'text-gray-800',
     textSecondary: darkMode ? 'text-gray-400' : 'text-gray-600',
-    border: darkMode ? 'border-gray-700' : 'border-white/30',
-    hover: darkMode ? 'hover:bg-gray-700' : 'hover:bg-white/50',
-    accent: darkMode ? 'bg-gray-700' : 'bg-white/40',
-    primary: 'bg-gradient-to-r from-amber-600 to-orange-600',
-    primaryHover: 'hover:from-amber-700 hover:to-orange-700'
+    border: darkMode ? 'border-gray-700/50' : 'border-white/50',
+    hover: darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-white/70',
+    accent: darkMode ? 'bg-gray-700/50' : 'bg-white/50',
+    primary: 'bg-gradient-to-r from-amber-500 to-orange-600',
+    primaryHover: 'hover:from-amber-600 hover:to-orange-700'
   };
 
   // Fetch all data
@@ -194,9 +331,9 @@ const AdminDashboard = () => {
 
   // Stats Card Component
   const StatCard = ({ icon: Icon, title, value, color, iconBg }) => (
-    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border p-6 transition-all duration-300 hover:shadow-2xl hover:scale-105`}>
+    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border p-6 transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-lg`}>
       <div className="flex items-center space-x-4">
-        <div className={`${iconBg} p-3 rounded-xl shadow-md`}>
+        <div className={`${iconBg} p-3 rounded-xl shadow-lg`}>
           <Icon className={`h-6 w-6 ${color}`} />
         </div>
         <div>
@@ -213,7 +350,7 @@ const AdminDashboard = () => {
 
   // Navigation Component
   const Navigation = () => (
-    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border p-4 mb-6`}>
+    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border p-4 mb-6 backdrop-blur-lg`}>
       <div className="flex flex-wrap gap-2">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -243,7 +380,7 @@ const AdminDashboard = () => {
   const DashboardContent = () => {
     if (!dashboardData) {
       return (
-        <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border p-12 text-center`}>
+        <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border p-12 text-center backdrop-blur-lg`}>
           <BarChart3 className={`h-20 w-20 ${theme.textSecondary} mx-auto mb-6`} />
           <h3 className={`text-xl font-bold ${theme.text} mb-3`}>No Dashboard Data</h3>
           <p className={`${theme.textSecondary} text-lg`}>Unable to load dashboard statistics</p>
@@ -289,8 +426,8 @@ const AdminDashboard = () => {
 
   // Pending Books Content
   const PendingBooksContent = () => (
-    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border overflow-hidden`}>
-      <div className="px-6 py-5 border-b border-orange-100 bg-gradient-to-r from-amber-50 to-orange-50">
+    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border overflow-hidden backdrop-blur-lg`}>
+      <div className="px-6 py-5 border-b border-orange-100 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-800">
         <h2 className={`text-2xl font-bold ${theme.text} flex items-center`}>
           <Clock className="h-6 w-6 mr-3 text-amber-600" />
           <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
@@ -324,7 +461,7 @@ const AdminDashboard = () => {
                       </span>
                     )}
                     {book.submittedDate && (
-                      <span className={`text-xs ${theme.textSecondary} flex items-center bg-white/50 px-3 py-1 rounded-full`}>
+                      <span className={`text-xs ${theme.textSecondary} flex items-center bg-white/50 dark:bg-gray-700/50 px-3 py-1 rounded-full`}>
                         <Calendar className="h-3 w-3 mr-1" />
                         {new Date(book.submittedDate).toLocaleDateString()}
                       </span>
@@ -358,8 +495,8 @@ const AdminDashboard = () => {
 
   // Generic List Content
   const ListContent = ({ title, data, type, icon: Icon }) => (
-    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border overflow-hidden`}>
-      <div className="px-6 py-5 border-b border-orange-100 bg-gradient-to-r from-amber-50 to-orange-50">
+    <div className={`${theme.cardBg} ${theme.border} rounded-2xl shadow-xl border overflow-hidden backdrop-blur-lg`}>
+      <div className="px-6 py-5 border-b border-orange-100 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-800">
         <h2 className={`text-2xl font-bold ${theme.text} flex items-center`}>
           <Icon className="h-6 w-6 mr-3 text-amber-600" />
           <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
@@ -408,9 +545,17 @@ const AdminDashboard = () => {
 
   return (
     <div className={`min-h-screen ${theme.bg} transition-colors duration-300`}>
+      {/* Header */}
+      <AdminHeader 
+        darkMode={darkMode} 
+        onToggleTheme={() => setDarkMode(!darkMode)}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+      />
+
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-6 right-6 z-50 p-5 rounded-xl shadow-2xl max-w-sm backdrop-blur-sm ${
+        <div className={`fixed top-24 right-6 z-50 p-5 rounded-xl shadow-2xl max-w-sm backdrop-blur-sm ${
           notification.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white' :
           notification.type === 'error' ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white' :
           'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
@@ -425,41 +570,20 @@ const AdminDashboard = () => {
 
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8 flex justify-between items-start">
-            <div>
-              <h1 className={`text-5xl font-bold ${theme.text} mb-4`}>
-                <span className="bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 bg-clip-text text-transparent">
-                  Admin Dashboard
-                </span>
-              </h1>
-              <p className={`${theme.textSecondary} text-xl font-medium`}>Manage books and monitor platform activity</p>
-              {error && (
-                <div className="mt-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-orange-200 text-orange-800 rounded-xl text-sm shadow-md">
-                  <AlertCircle className="h-4 w-4 inline mr-2" />
-                  {error}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className={`flex items-center space-x-3 px-6 py-3 rounded-xl ${theme.cardBg} ${theme.border} border ${theme.hover} transition-all duration-200 shadow-lg hover:shadow-xl ${refreshing ? 'opacity-50' : ''}`}
-              >
-                <RotateCw className={`h-5 w-5 ${theme.text} ${refreshing ? 'animate-spin' : ''}`} />
-                <span className={`${theme.text} font-semibold`}>
-                  {refreshing ? 'Refreshing...' : 'Refresh'}
-                </span>
-              </button>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-4 rounded-xl ${theme.cardBg} ${theme.border} border ${theme.hover} transition-all duration-200 shadow-lg hover:shadow-xl`}
-              >
-                {darkMode ? <Sun className="h-6 w-6 text-yellow-500" /> : <Moon className="h-6 w-6 text-gray-600" />}
-              </button>
-            </div>
+          {/* Main Content Header */}
+          <div className="mb-8">
+            <h1 className={`text-4xl font-bold ${theme.text} mb-4`}>
+              <span className="bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 bg-clip-text text-transparent">
+                Dashboard Overview
+              </span>
+            </h1>
+            <p className={`${theme.textSecondary} text-xl font-medium`}>Manage books and monitor platform activity</p>
+            {error && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-orange-200 dark:border-orange-800 text-orange-800 dark:text-orange-200 rounded-xl text-sm shadow-md">
+                <AlertCircle className="h-4 w-4 inline mr-2" />
+                {error}
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
